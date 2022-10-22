@@ -1,12 +1,14 @@
 # Todoist API Deno TypeScript Client
 
-First things first, huge thanks to [Sant123](https://github.com/sant123) who created the [first deno fork](https://github.com/sant123/todoist) of this repo also ported some of the dependencies. I could not have done this without the work you've done!
+First things first, huge thanks to [Sant123](https://github.com/sant123) who created the [first deno fork](https://github.com/sant123/todoist) of this repo and ported some of the dependencies. I could not have done this without the work you've done!
+
+---
 
 In this repo, I have forked directly from the official [todoist typescript](https://github.com/Doist/todoist-api-typescript) repo, in the hopes of making merging upstream changes easier in future.
 
-The official repo doesn't seem to fully support the sync API yet. So I have implemented a few functions in the `sync-api` branch. Check out that branch for the sync functionality. 
+The official repo doesn't seem to fully support the sync API yet. So I have implemented a few functions in the `sync-api` branch. Check out that branch for some sync functionality. 
 
-I have not put sync branch into main as I anticipate Doist will update their main repo with the full sync API soon. So I can just pull that in later.
+I have not merged the sync branch into main as I anticipate Doist will update their repo with the full sync API soon. So I can just pull that in later.
 
 ## Installation
 
