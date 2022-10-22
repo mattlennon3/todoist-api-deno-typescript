@@ -1,122 +1,154 @@
-import Axios, { AxiosResponse, AxiosError } from 'axios'
-import applyCaseMiddleware from 'axios-case-converter'
-import { TodoistRequestError } from './types/errors'
-import { HttpMethod } from './types/http'
-import { v4 as uuidv4 } from 'uuid'
-import axiosRetry from 'axios-retry'
+import { urlJoin } from "../deps/url_join.ts";
 
-export function paramsSerializer(params: Record<string, unknown>) {
-    const qs = new URLSearchParams()
+import { TodoistRequestError } from "./types/mod.ts";
 
-    Object.keys(params).forEach((key) => {
-        const value = params[key]
-        if (Array.isArray(value)) {
-            qs.append(key, value.join(','))
-        } else {
-            qs.append(key, String(value))
-        }
-    })
+import type {
+  HttpClientRequest,
+  HttpClientResponse,
+  HttpMethod,
+} from "./types/mod.ts";
 
-    return qs.toString()
-}
+import type { PlainObject } from "./types/mod.ts";
+
+import {
+  objectToCamelCase,
+  objectToKeyPairString,
+  objectToSnakeCase,
+} from "./utils/transformation.ts";
 
 const defaultHeaders = {
-    'Content-Type': 'application/json',
-}
+  "Content-Type": "application/json",
+};
 
 function getAuthHeader(apiKey: string) {
-    return `Bearer ${apiKey}`
+  return `Bearer ${apiKey}`;
 }
 
-function isNetworkError(error: AxiosError) {
-    return Boolean(!error.response && error.code !== 'ECONNABORTED')
+async function getTodoistRequestError(
+  error: Error | Response,
+): Promise<TodoistRequestError> {
+  const message = error instanceof Error ? error.message : error.statusText;
+  const requestError = new TodoistRequestError(message);
+
+  if (error instanceof Response) {
+    requestError.httpStatusCode = error.status;
+    requestError.responseData = await error.text();
+  }
+
+  return requestError;
 }
 
-function getRetryDelay(retryCount: number) {
-    return retryCount === 1 ? 0 : 500
+function getRequestConfiguration(apiToken?: string, requestId?: string) {
+  const authHeader = apiToken
+    ? { Authorization: getAuthHeader(apiToken) }
+    : undefined;
+  const requestIdHeader = requestId ? { "X-Request-Id": requestId } : undefined;
+  const headers = { ...defaultHeaders, ...authHeader, ...requestIdHeader };
+
+  return { headers };
 }
 
-function isAxiosError(error: unknown): error is AxiosError {
-    return Boolean((error as AxiosError)?.isAxiosError)
-}
+function getHttpClient<T>(apiToken?: string, requestId?: string) {
+  const configuration = getRequestConfiguration(apiToken, requestId);
 
-function getTodoistRequestError(
-    error: Error | AxiosError,
-    originalStack?: Error,
-): TodoistRequestError {
-    const requestError = new TodoistRequestError(error.message)
+  return async (
+    endpoint: string,
+    request: HttpClientRequest,
+  ): Promise<HttpClientResponse<T>> => {
+    if (request.params) {
+      const searchParams = new URLSearchParams(
+        objectToKeyPairString(objectToSnakeCase(request.params)),
+      );
 
-    requestError.stack = isAxiosError(error) && originalStack ? originalStack.stack : error.stack
-
-    if (isAxiosError(error) && error.response) {
-        requestError.httpStatusCode = error.response.status
-        requestError.responseData = error.response.data
+      endpoint = urlJoin(endpoint, `?${searchParams.toString()}`);
     }
 
-    return requestError
-}
+    const response = await fetch(endpoint, {
+      ...configuration,
+      method: request.method,
+      body: request.method === "POST" && request.body
+        ? JSON.stringify(objectToSnakeCase(request.body))
+        : undefined,
+    });
 
-function getRequestConfiguration(baseURL: string, apiToken?: string, requestId?: string) {
-    const authHeader = apiToken ? { Authorization: getAuthHeader(apiToken) } : undefined
-    const requestIdHeader = requestId ? { 'X-Request-Id': requestId } : undefined
-    const headers = { ...defaultHeaders, ...authHeader, ...requestIdHeader }
-
-    return { baseURL, headers }
-}
-
-function getAxiosClient(baseURL: string, apiToken?: string, requestId?: string) {
-    const configuration = getRequestConfiguration(baseURL, apiToken, requestId)
-    const client = applyCaseMiddleware(Axios.create(configuration))
-
-    axiosRetry(client, {
-        retries: 3,
-        retryCondition: isNetworkError,
-        retryDelay: getRetryDelay,
-    })
-
-    return client
-}
-
-export function isSuccess(response: AxiosResponse): boolean {
-    return response.status >= 200 && response.status < 300
-}
-
-export async function request<T>(
-    httpMethod: HttpMethod,
-    baseUri: string,
-    relativePath: string,
-    apiToken?: string,
-    payload?: Record<string, unknown>,
-    requestId?: string,
-): Promise<AxiosResponse<T>> {
-    // axios loses the original stack when returning errors, for the sake of better reporting
-    // we capture it here and reapply it to any thrown errors.
-    // Ref: https://github.com/axios/axios/issues/2387
-    const originalStack = new Error()
-
-    try {
-        if (httpMethod === 'POST' && !requestId) {
-            requestId = uuidv4()
-        }
-
-        const axiosClient = getAxiosClient(baseUri, apiToken, requestId)
-
-        switch (httpMethod) {
-            case 'GET':
-                return await axiosClient.get<T>(relativePath, {
-                    params: payload,
-                    paramsSerializer,
-                })
-            case 'POST':
-                return await axiosClient.post<T>(relativePath, payload)
-            case 'DELETE':
-                return await axiosClient.delete<T>(relativePath)
-        }
-    } catch (error: unknown) {
-        if (!isAxiosError(error) && !(error instanceof Error)) {
-            throw new Error('An unknown error occurred during the request')
-        }
-
-        throw getTodoistRequestError(error, originalStack)
+    if (!response.ok) {
+      throw response;
     }
+
+    let data = await response.json();
+
+    if (Array.isArray(data)) {
+      data = data.map(objectToCamelCase);
+    } else {
+      data = objectToCamelCase(data);
+    }
+
+    return { data, status: response.status };
+  };
+}
+
+export function isSuccess(response: HttpClientResponse): boolean {
+  return response.status >= 200 && response.status < 300;
+}
+
+// ES Modules cannot be stubbed, so this wrapper solves the issue for Sinon.js
+export const _wrapRestClient = {
+  request: _request,
+};
+
+export function request<T extends unknown>(
+  httpMethod: HttpMethod,
+  baseUri: string,
+  relativePath: string,
+  apiToken?: string,
+  payload?: PlainObject,
+  requestId?: string,
+): Promise<HttpClientResponse<T>> {
+  return _wrapRestClient.request(
+    httpMethod,
+    baseUri,
+    relativePath,
+    apiToken,
+    payload,
+    requestId,
+  );
+}
+
+async function _request<T extends unknown>(
+  httpMethod: HttpMethod,
+  baseUri: string,
+  relativePath: string,
+  apiToken?: string,
+  payload?: PlainObject,
+  requestId?: string,
+): Promise<HttpClientResponse<T>> {
+  try {
+    if (httpMethod === "POST" && !requestId) {
+      requestId = globalThis.crypto.randomUUID();
+    }
+
+    const httpClient = getHttpClient<T>(apiToken, requestId);
+    const endpoint = urlJoin(baseUri, relativePath);
+
+    switch (httpMethod) {
+      case "GET":
+        return await httpClient(endpoint, {
+          method: "GET",
+          params: payload,
+        });
+      case "POST":
+        return await httpClient(
+          endpoint,
+          { method: "POST", body: payload },
+        );
+      case "DELETE":
+        return await httpClient(endpoint, { method: "DELETE" });
+    }
+  } catch (error) {
+    if (!(error instanceof Error) && !(error instanceof Response)) {
+      throw new Error("An unknown error occurred during the request");
+    }
+
+    throw await getTodoistRequestError(error);
+  }
 }

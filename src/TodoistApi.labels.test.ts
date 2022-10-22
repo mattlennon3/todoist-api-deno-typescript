@@ -1,159 +1,167 @@
-import { TodoistApi } from '.'
-import { DEFAULT_AUTH_TOKEN, DEFAULT_LABEL, DEFAULT_REQUEST_ID } from './testUtils/testDefaults'
-import { getRestBaseUri, ENDPOINT_REST_LABELS } from './consts/endpoints'
-import { setupRestClientMock } from './testUtils/mocks'
+import { TodoistApi } from ".";
+import {
+  DEFAULT_AUTH_TOKEN,
+  DEFAULT_LABEL,
+  DEFAULT_REQUEST_ID,
+} from "./testUtils/testDefaults";
+import { ENDPOINT_REST_LABELS, getRestBaseUri } from "./consts/endpoints";
+import { setupRestClientMock } from "./testUtils/mocks";
 
 function getTarget() {
-    return new TodoistApi(DEFAULT_AUTH_TOKEN)
+  return new TodoistApi(DEFAULT_AUTH_TOKEN);
 }
 
-describe('TodoistApi label endpoints', () => {
-    describe('getLabel', () => {
-        test('calls get request with expected url', async () => {
-            const labelId = '12'
-            const requestMock = setupRestClientMock(DEFAULT_LABEL)
-            const api = getTarget()
+describe("TodoistApi label endpoints", () => {
+  describe("getLabel", () => {
+    test("calls get request with expected url", async () => {
+      const labelId = "12";
+      const requestMock = setupRestClientMock(DEFAULT_LABEL);
+      const api = getTarget();
 
-            await api.getLabel(labelId)
+      await api.getLabel(labelId);
 
-            expect(requestMock).toBeCalledTimes(1)
-            expect(requestMock).toBeCalledWith(
-                'GET',
-                getRestBaseUri(),
-                `${ENDPOINT_REST_LABELS}/${labelId}`,
-                DEFAULT_AUTH_TOKEN,
-            )
-        })
+      expect(requestMock).toBeCalledTimes(1);
+      expect(requestMock).toBeCalledWith(
+        "GET",
+        getRestBaseUri(),
+        `${ENDPOINT_REST_LABELS}/${labelId}`,
+        DEFAULT_AUTH_TOKEN,
+      );
+    });
 
-        test('returns result from rest client', async () => {
-            setupRestClientMock(DEFAULT_LABEL)
-            const api = getTarget()
+    test("returns result from rest client", async () => {
+      setupRestClientMock(DEFAULT_LABEL);
+      const api = getTarget();
 
-            const label = await api.getLabel('123')
+      const label = await api.getLabel("123");
 
-            expect(label).toEqual(DEFAULT_LABEL)
-        })
-    })
+      expect(label).toEqual(DEFAULT_LABEL);
+    });
+  });
 
-    describe('getLabels', () => {
-        test('calls get on labels endpoint', async () => {
-            const requestMock = setupRestClientMock([DEFAULT_LABEL])
-            const api = getTarget()
+  describe("getLabels", () => {
+    test("calls get on labels endpoint", async () => {
+      const requestMock = setupRestClientMock([DEFAULT_LABEL]);
+      const api = getTarget();
 
-            await api.getLabels()
+      await api.getLabels();
 
-            expect(requestMock).toBeCalledTimes(1)
-            expect(requestMock).toBeCalledWith(
-                'GET',
-                getRestBaseUri(),
-                ENDPOINT_REST_LABELS,
-                DEFAULT_AUTH_TOKEN,
-            )
-        })
+      expect(requestMock).toBeCalledTimes(1);
+      expect(requestMock).toBeCalledWith(
+        "GET",
+        getRestBaseUri(),
+        ENDPOINT_REST_LABELS,
+        DEFAULT_AUTH_TOKEN,
+      );
+    });
 
-        test('returns result from rest client', async () => {
-            const labels = [DEFAULT_LABEL]
-            setupRestClientMock(labels)
-            const api = getTarget()
+    test("returns result from rest client", async () => {
+      const labels = [DEFAULT_LABEL];
+      setupRestClientMock(labels);
+      const api = getTarget();
 
-            const response = await api.getLabels()
+      const response = await api.getLabels();
 
-            expect(response).toEqual(labels)
-        })
-    })
+      expect(response).toEqual(labels);
+    });
+  });
 
-    describe('addLabel', () => {
-        const DEFAULT_ADD_LABEL_ARGS = {
-            name: 'This is a label',
-        }
+  describe("addLabel", () => {
+    const DEFAULT_ADD_LABEL_ARGS = {
+      name: "This is a label",
+    };
 
-        test('calls post on restClient with expected parameters', async () => {
-            const requestMock = setupRestClientMock(DEFAULT_LABEL)
-            const api = getTarget()
+    test("calls post on restClient with expected parameters", async () => {
+      const requestMock = setupRestClientMock(DEFAULT_LABEL);
+      const api = getTarget();
 
-            await api.addLabel(DEFAULT_ADD_LABEL_ARGS, DEFAULT_REQUEST_ID)
+      await api.addLabel(DEFAULT_ADD_LABEL_ARGS, DEFAULT_REQUEST_ID);
 
-            expect(requestMock).toBeCalledTimes(1)
-            expect(requestMock).toBeCalledWith(
-                'POST',
-                getRestBaseUri(),
-                ENDPOINT_REST_LABELS,
-                DEFAULT_AUTH_TOKEN,
-                DEFAULT_ADD_LABEL_ARGS,
-                DEFAULT_REQUEST_ID,
-            )
-        })
+      expect(requestMock).toBeCalledTimes(1);
+      expect(requestMock).toBeCalledWith(
+        "POST",
+        getRestBaseUri(),
+        ENDPOINT_REST_LABELS,
+        DEFAULT_AUTH_TOKEN,
+        DEFAULT_ADD_LABEL_ARGS,
+        DEFAULT_REQUEST_ID,
+      );
+    });
 
-        test('returns result from rest client', async () => {
-            setupRestClientMock(DEFAULT_LABEL)
-            const api = getTarget()
+    test("returns result from rest client", async () => {
+      setupRestClientMock(DEFAULT_LABEL);
+      const api = getTarget();
 
-            const label = await api.addLabel(DEFAULT_ADD_LABEL_ARGS)
+      const label = await api.addLabel(DEFAULT_ADD_LABEL_ARGS);
 
-            expect(label).toEqual(DEFAULT_LABEL)
-        })
-    })
+      expect(label).toEqual(DEFAULT_LABEL);
+    });
+  });
 
-    describe('updateLabel', () => {
-        const DEFAULT_UPDATE_LABEL_ARGS = {
-            name: 'A new name',
-        }
+  describe("updateLabel", () => {
+    const DEFAULT_UPDATE_LABEL_ARGS = {
+      name: "A new name",
+    };
 
-        test('calls post on restClient with expected parameters', async () => {
-            const labelId = '123'
-            const requestMock = setupRestClientMock(DEFAULT_LABEL, 204)
-            const api = getTarget()
+    test("calls post on restClient with expected parameters", async () => {
+      const labelId = "123";
+      const requestMock = setupRestClientMock(DEFAULT_LABEL, 204);
+      const api = getTarget();
 
-            await api.updateLabel(labelId, DEFAULT_UPDATE_LABEL_ARGS, DEFAULT_REQUEST_ID)
+      await api.updateLabel(
+        labelId,
+        DEFAULT_UPDATE_LABEL_ARGS,
+        DEFAULT_REQUEST_ID,
+      );
 
-            expect(requestMock).toBeCalledTimes(1)
-            expect(requestMock).toBeCalledWith(
-                'POST',
-                getRestBaseUri(),
-                `${ENDPOINT_REST_LABELS}/${labelId}`,
-                DEFAULT_AUTH_TOKEN,
-                DEFAULT_UPDATE_LABEL_ARGS,
-                DEFAULT_REQUEST_ID,
-            )
-        })
+      expect(requestMock).toBeCalledTimes(1);
+      expect(requestMock).toBeCalledWith(
+        "POST",
+        getRestBaseUri(),
+        `${ENDPOINT_REST_LABELS}/${labelId}`,
+        DEFAULT_AUTH_TOKEN,
+        DEFAULT_UPDATE_LABEL_ARGS,
+        DEFAULT_REQUEST_ID,
+      );
+    });
 
-        test('returns success result from rest client', async () => {
-            const returnedTask = { ...DEFAULT_LABEL, ...DEFAULT_UPDATE_LABEL_ARGS }
-            setupRestClientMock(returnedTask, 204)
-            const api = getTarget()
+    test("returns success result from rest client", async () => {
+      const returnedTask = { ...DEFAULT_LABEL, ...DEFAULT_UPDATE_LABEL_ARGS };
+      setupRestClientMock(returnedTask, 204);
+      const api = getTarget();
 
-            const result = await api.updateLabel('123', DEFAULT_UPDATE_LABEL_ARGS)
+      const result = await api.updateLabel("123", DEFAULT_UPDATE_LABEL_ARGS);
 
-            expect(result).toEqual(returnedTask)
-        })
-    })
+      expect(result).toEqual(returnedTask);
+    });
+  });
 
-    describe('deleteLabel', () => {
-        test('calls delete on expected label', async () => {
-            const labelId = '123'
-            const requestMock = setupRestClientMock(undefined, 204)
-            const api = getTarget()
+  describe("deleteLabel", () => {
+    test("calls delete on expected label", async () => {
+      const labelId = "123";
+      const requestMock = setupRestClientMock(undefined, 204);
+      const api = getTarget();
 
-            await api.deleteLabel(labelId, DEFAULT_REQUEST_ID)
+      await api.deleteLabel(labelId, DEFAULT_REQUEST_ID);
 
-            expect(requestMock).toBeCalledTimes(1)
-            expect(requestMock).toBeCalledWith(
-                'DELETE',
-                getRestBaseUri(),
-                `${ENDPOINT_REST_LABELS}/${labelId}`,
-                DEFAULT_AUTH_TOKEN,
-                undefined,
-                DEFAULT_REQUEST_ID,
-            )
-        })
+      expect(requestMock).toBeCalledTimes(1);
+      expect(requestMock).toBeCalledWith(
+        "DELETE",
+        getRestBaseUri(),
+        `${ENDPOINT_REST_LABELS}/${labelId}`,
+        DEFAULT_AUTH_TOKEN,
+        undefined,
+        DEFAULT_REQUEST_ID,
+      );
+    });
 
-        test('returns success result from rest client', async () => {
-            setupRestClientMock(undefined, 204)
-            const api = getTarget()
+    test("returns success result from rest client", async () => {
+      setupRestClientMock(undefined, 204);
+      const api = getTarget();
 
-            const result = await api.deleteLabel('123')
+      const result = await api.deleteLabel("123");
 
-            expect(result).toEqual(true)
-        })
-    })
-})
+      expect(result).toEqual(true);
+    });
+  });
+});
