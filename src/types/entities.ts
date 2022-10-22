@@ -197,3 +197,14 @@ export type QuickAddTaskResponse = {
     lang: string;
   } | null;
 };
+
+export type ReorderBulkParams = {
+  id: string;
+  child_order: number;
+}
+
+export type MoveTaskParams = {
+  parent_id?: string | null;
+  section_id?: string | null;
+  project_id?: string | null;
+}

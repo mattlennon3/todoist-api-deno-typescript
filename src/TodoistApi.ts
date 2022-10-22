@@ -1,13 +1,15 @@
 import {
   type Comment,
-  Int,
   type Label,
   type Project,
   type QuickAddTaskResponse,
   type Section,
   type Task,
   type User,
+  type MoveTaskParams,
+  type ReorderBulkParams,
 } from "./types/entities.ts";
+import { String } from "../deps/runtypes.ts";
 import {
   AddLabelArgs,
   AddProjectArgs,
@@ -42,9 +44,15 @@ import {
   ENDPOINT_REST_TASK_REOPEN,
   ENDPOINT_REST_TASKS,
   ENDPOINT_SYNC_QUICK_ADD,
+  ENDPOINT_SYNC,
   getRestBaseUri,
   getSyncBaseUri,
 } from "./consts/endpoints.ts";
+import {
+  SYNC_ITEM_MOVE,
+  SYNC_ITEM_REORDER,
+  SYNC_ITEM_UNCOMPLETE
+} from "./consts/syncTypes.ts";
 import {
   validateComment,
   validateCommentArray,
@@ -69,20 +77,45 @@ function generatePath(...segments: string[]): string {
 }
 
 export class TodoistApi {
+  private restApiBase: string;
+  private syncApiBase: string;
+  
   authToken: string;
+  batchRequestArgs: Array<{
+    type: string;
+    uuid?: string;
+    args: unknown;
+  }>;
 
   constructor(authToken: string, baseUrl?: string) {
     this.authToken = authToken;
+    this.batchRequestArgs = [];
 
     this.restApiBase = getRestBaseUri(baseUrl);
     this.syncApiBase = getSyncBaseUri(baseUrl);
   }
 
-  private restApiBase: string;
-  private syncApiBase: string;
+  async sync(): Promise<boolean> {
+    if(this.batchRequestArgs.length > 0) {
+      const response = await request(
+        "POST",
+        this.syncApiBase,
+        ENDPOINT_SYNC,
+        this.authToken,
+        {
+          commands: this.batchRequestArgs
+        },
+        undefined,
+        true
+      );
+      return isSuccess(response);
+    } else {
+      return true;
+    }
+  }
 
   async getTask(id: string): Promise<Task> {
-    Int.check(id);
+    String.check(id);
     const response = await request<Task>(
       "GET",
       this.restApiBase,
@@ -137,7 +170,7 @@ export class TodoistApi {
     args: UpdateTaskArgs,
     requestId?: string,
   ): Promise<Task> {
-    Int.check(id);
+    String.check(id);
     const response = await request(
       "POST",
       this.restApiBase,
@@ -150,7 +183,7 @@ export class TodoistApi {
   }
 
   async closeTask(id: string, requestId?: string): Promise<boolean> {
-    Int.check(id);
+    String.check(id);
     const response = await request(
       "POST",
       this.restApiBase,
@@ -163,7 +196,7 @@ export class TodoistApi {
   }
 
   async reopenTask(id: string, requestId?: string): Promise<boolean> {
-    Int.check(id);
+    String.check(id);
     const response = await request(
       "POST",
       this.restApiBase,
@@ -176,7 +209,7 @@ export class TodoistApi {
   }
 
   async deleteTask(id: string, requestId?: string): Promise<boolean> {
-    Int.check(id);
+    String.check(id);
     const response = await request(
       "DELETE",
       this.restApiBase,
@@ -188,8 +221,45 @@ export class TodoistApi {
     return isSuccess(response);
   }
 
+  reorderTasks(tasks: ReorderBulkParams[]): void {
+    tasks.forEach(({id}) => String.check(id));
+    this.batchRequestArgs.push({
+      type: SYNC_ITEM_REORDER,
+      uuid: globalThis.crypto.randomUUID(),
+      args: {
+        items: tasks.map(({id, child_order}) => ({
+          // TODO could also check if child_order is > 0 here. Had some issues
+        id, child_order
+      })),
+      }
+    });
+  }
+
+  moveTask(id: string, args: MoveTaskParams): void {
+    String.check(id);
+    this.batchRequestArgs.push({
+      type: SYNC_ITEM_MOVE,
+      uuid: globalThis.crypto.randomUUID(),
+      args: {
+        id,
+        ...args
+      }
+    });
+  }
+
+  uncompleteTask(id: string): void {
+    String.check(id);
+    this.batchRequestArgs.push({
+      type: SYNC_ITEM_UNCOMPLETE,
+      uuid: globalThis.crypto.randomUUID(),
+      args: {
+        id,
+      }
+    });
+  }
+
   async getProject(id: string): Promise<Project> {
-    Int.check(id);
+    String.check(id);
     const response = await request<Project>(
       "GET",
       this.restApiBase,
@@ -229,7 +299,7 @@ export class TodoistApi {
     args: UpdateProjectArgs,
     requestId?: string,
   ): Promise<Project> {
-    Int.check(id);
+    String.check(id);
     const response = await request(
       "POST",
       this.restApiBase,
@@ -242,7 +312,7 @@ export class TodoistApi {
   }
 
   async deleteProject(id: string, requestId?: string): Promise<boolean> {
-    Int.check(id);
+    String.check(id);
     const response = await request(
       "DELETE",
       this.restApiBase,
@@ -255,7 +325,7 @@ export class TodoistApi {
   }
 
   async getProjectCollaborators(projectId: string): Promise<User[]> {
-    Int.check(projectId);
+    String.check(projectId);
     const response = await request<User[]>(
       "GET",
       this.restApiBase,
@@ -283,7 +353,7 @@ export class TodoistApi {
   }
 
   async getSection(id: string): Promise<Section> {
-    Int.check(id);
+    String.check(id);
     const response = await request<Section>(
       "GET",
       this.restApiBase,
@@ -312,7 +382,7 @@ export class TodoistApi {
     args: UpdateSectionArgs,
     requestId?: string,
   ): Promise<Section> {
-    Int.check(id);
+    String.check(id);
     const response = await request(
       "POST",
       this.restApiBase,
@@ -325,7 +395,7 @@ export class TodoistApi {
   }
 
   async deleteSection(id: string, requestId?: string): Promise<boolean> {
-    Int.check(id);
+    String.check(id);
     const response = await request(
       "DELETE",
       this.restApiBase,
@@ -341,7 +411,7 @@ export class TodoistApi {
    * Fetches a personal label
    */
   async getLabel(id: string): Promise<Label> {
-    Int.check(id);
+    String.check(id);
     const response = await request<Label>(
       "GET",
       this.restApiBase,
@@ -390,7 +460,7 @@ export class TodoistApi {
     args: UpdateLabelArgs,
     requestId?: string,
   ): Promise<Label> {
-    Int.check(id);
+    String.check(id);
     const response = await request(
       "POST",
       this.restApiBase,
@@ -406,7 +476,7 @@ export class TodoistApi {
    * Deletes a personal label
    */
   async deleteLabel(id: string, requestId?: string): Promise<boolean> {
-    Int.check(id);
+    String.check(id);
     const response = await request(
       "DELETE",
       this.restApiBase,
@@ -464,7 +534,7 @@ export class TodoistApi {
   }
 
   async getComment(id: string): Promise<Comment> {
-    Int.check(id);
+    String.check(id);
     const response = await request<Comment>(
       "GET",
       this.restApiBase,
@@ -496,7 +566,7 @@ export class TodoistApi {
     args: UpdateCommentArgs,
     requestId?: string,
   ): Promise<Comment> {
-    Int.check(id);
+    String.check(id);
     const response = await request<boolean>(
       "POST",
       this.restApiBase,
@@ -509,7 +579,7 @@ export class TodoistApi {
   }
 
   async deleteComment(id: string, requestId?: string): Promise<boolean> {
-    Int.check(id);
+    String.check(id);
     const response = await request(
       "DELETE",
       this.restApiBase,

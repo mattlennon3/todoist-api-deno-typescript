@@ -38,19 +38,20 @@ async function getTodoistRequestError(
   return requestError;
 }
 
-function getRequestConfiguration(apiToken?: string, requestId?: string) {
+function getRequestConfiguration(apiToken?: string, requestId?: string, isSync?: boolean) {
   const authHeader = apiToken
     ? { Authorization: getAuthHeader(apiToken) }
     : undefined;
   const requestIdHeader = requestId ? { "X-Request-Id": requestId } : undefined;
-  const headers = { ...defaultHeaders, ...authHeader, ...requestIdHeader };
+  const syncTokenHeader = isSync ? { "sync_token": "*" } : undefined;
+  const resourceTypesHeader = isSync ? { "resource_types": "all" } : undefined;
+  const headers = { ...defaultHeaders, ...authHeader, ...requestIdHeader, ...syncTokenHeader, ...resourceTypesHeader };
 
   return { headers };
 }
 
-function getHttpClient<T>(apiToken?: string, requestId?: string) {
-  const configuration = getRequestConfiguration(apiToken, requestId);
-
+function getHttpClient<T>(apiToken?: string, requestId?: string, isSync?: boolean) {
+  const configuration = getRequestConfiguration(apiToken, requestId, isSync);
   return async (
     endpoint: string,
     request: HttpClientRequest,
@@ -103,6 +104,7 @@ export function request<T extends unknown>(
   apiToken?: string,
   payload?: PlainObject,
   requestId?: string,
+  isSync?: boolean,
 ): Promise<HttpClientResponse<T>> {
   return _wrapRestClient.request(
     httpMethod,
@@ -111,6 +113,7 @@ export function request<T extends unknown>(
     apiToken,
     payload,
     requestId,
+    isSync,
   );
 }
 
@@ -121,13 +124,14 @@ async function _request<T extends unknown>(
   apiToken?: string,
   payload?: PlainObject,
   requestId?: string,
+  isSync?: boolean, // TODO should really pass through sync_token and resource_types here
 ): Promise<HttpClientResponse<T>> {
   try {
     if (httpMethod === "POST" && !requestId) {
       requestId = globalThis.crypto.randomUUID();
     }
 
-    const httpClient = getHttpClient<T>(apiToken, requestId);
+    const httpClient = getHttpClient<T>(apiToken, requestId, isSync);
     const endpoint = urlJoin(baseUri, relativePath);
 
     switch (httpMethod) {
